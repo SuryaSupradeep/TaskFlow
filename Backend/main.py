@@ -18,7 +18,8 @@ app = FastAPI(title="Team Task Manager")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", 
+                   "http://stunning-dream-production-67f8.up.railway.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
