@@ -1,5 +1,4 @@
 [build]
-builder = "nixpacks"
 buildCommand = "pip3 install -r requirements.txt"
 
 [deploy]
