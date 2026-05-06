@@ -3,4 +3,4 @@ builder = "NIXPACKS"
 
 [deploy]
 # Navigates to backend, ensures dependencies are installed, and starts the server
-startCommand = "pip install -r team-task-manager_backend_requirements.txt && uvicorn main:app --host 0.0.0.0 --port $PORT"
+startCommand = "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port $PORT"
