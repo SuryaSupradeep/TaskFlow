@@ -5,5 +5,3 @@ buildCommand = "pip3 install -r requirements.txt"
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
 restartPolicyType = "on_failure"
 
-[variables]
-RAILPACK_PYTHON_VERSION = "3.12"
