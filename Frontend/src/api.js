@@ -1,5 +1,5 @@
 
-const BASE = 'https://taskflow-production-0830.up.railway.app/api';
+const BASE = `${import.meta.env.VITE_API_URL}/api`;
 
 // No hardcoded users, projects or tasks — everything comes from DB
 // Session storage is only used so newly registered users can log in
