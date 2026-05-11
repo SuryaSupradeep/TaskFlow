@@ -51,6 +51,10 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
+@app.get("/")
+def root():
+    return {"message": "API working"}
+
 @app.post("/api/users/login", response_model=schemas.UserOut)
 def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == credentials.email).first()
