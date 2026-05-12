@@ -159,6 +159,40 @@ Update task status    Yes      Yes
 Team chat             Yes      Yes
 Project comments      Yes      Yes
 
+ROLE BASED ACCESS CONTROL
+
+Admin
+  - Can create, view, update and delete tasks across all projects
+  - Can create new projects
+  - Can view all team members and their assigned tasks
+  - Can assign tasks to any team member
+  - Can set due dates and project assignments
+  - Can view the full dashboard with all project progress
+  - Can participate in team chat and project comments
+
+Member
+  - Can only view tasks assigned to them personally
+  - Cannot create or delete tasks
+  - Cannot create projects
+  - Can update the status of their own assigned tasks by moving them
+    from To Do to In Progress to Done
+  - Can view their personal dashboard showing only their own stats
+  - Can see the team members panel but cannot manage members
+  - Can participate in team chat and project comments
+  - Cannot see tasks assigned to other members
+
+How roles are assigned
+  - Role is selected during account registration as either Admin or Member
+  - Role is stored in the database against the user record
+  - Every API request checks the role before performing restricted actions
+  - The frontend hides or shows buttons and sections based on the logged in role
+  - Members logging in see a notice at the top stating they are in member view
+
+Security note
+  - Role enforcement happens on both frontend and backend
+  - Frontend hides Admin controls from Member accounts
+  - Backend validates project and user existence before any insert or update
+
 
 AI TASK ANALYSIS
 
