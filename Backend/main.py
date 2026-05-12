@@ -254,6 +254,7 @@ def get_dashboard(db: Session = Depends(get_db)):
 
 # ── Team Messages ───────────────────────────────────────────────
 
+
 @app.get("/api/team/messages")
 def get_messages(db: Session = Depends(get_db)):
     messages = db.query(models.TeamMessage).order_by(models.TeamMessage.timestamp.asc()).all()
@@ -270,7 +271,6 @@ def get_messages(db: Session = Depends(get_db)):
 
 @app.post("/api/team/messages")
 def send_message(payload: schemas.MessageCreate, db: Session = Depends(get_db)):
-    # Validate user exists
     user = db.query(models.User).filter(models.User.id == payload.user_id).first()
     if not user:
         raise HTTPException(status_code=400, detail=f"User {payload.user_id} does not exist")
@@ -282,7 +282,6 @@ def send_message(payload: schemas.MessageCreate, db: Session = Depends(get_db)):
     db.add(msg)
     db.commit()
     db.refresh(msg)
-    # Return with user_name included
     return {
         "id":        msg.id,
         "text":      msg.text,
