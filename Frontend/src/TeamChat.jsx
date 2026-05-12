@@ -19,7 +19,7 @@ export default function TeamChat({ user, users }) {
   }, []);
 
   // Auto-scroll to bottom
-  useEffect(() => {
+  useEffect(() => { 
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -28,7 +28,7 @@ export default function TeamChat({ user, users }) {
     if (!text.trim()) return;
     const msg = text;
     setText(''); // clear instantly for good UX
-    await createTeamMessage(user.id, msg);
+    await createTeamMessage(Number(user.id), msg);
     loadMessages();
   };
 

@@ -65,9 +65,11 @@ export async function registerUser({name, email, password, role = 'member', allU
     method: 'POST',
     body: JSON.stringify({ name,email, password, role }),
   });
-  const newUser = data?.id
-    ? { ...data, name: data.name || email.split('@')[0], password }
-    : { id: Date.now(), email, password, name: email.split('@')[0], role };
+  if (!data?.id) {
+  throw new Error("Registration failed. User was not created in backend.");
+}
+
+const newUser = { ...data, name: data.name || email.split('@')[0], password };
 
   const current = allUsers?.length ? allUsers : getStoredUsers();
   const updated = current.find(u => u.email === email)
