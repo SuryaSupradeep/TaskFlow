@@ -168,6 +168,36 @@ estimated effort (2-4 hours, 1-2 days, or 3-5 days) and a step by step plan
 tailored to the task type such as API development, frontend, database, deployment
 or bug fixing. This runs directly on the backend with no external API required.
 
+VALIDATION RULES
+
+Registration
+  - Full name is required
+  - Email must contain @ symbol
+  - Email must end with @taskflow.com
+  - Password must be at least 4 characters
+  - Duplicate emails are rejected with "Email already registered"
+
+Login
+  - Invalid email or password returns 401 Unauthorized
+
+Tasks
+  - Title is required
+  - Project must be selected and must exist in the database
+  - Assignee must exist in the database if provided
+  - Description longer than 10 characters triggers AI analysis
+
+Projects
+  - Project name is required
+  - Project must exist in database before tasks can be assigned to it
+
+Team Messages
+  - User must exist in database before sending a message
+  - Empty messages are not accepted
+
+Project Comments
+  - Project must exist before adding a comment
+  - User must exist before adding a comment
+
 
 AUTHOR
 
