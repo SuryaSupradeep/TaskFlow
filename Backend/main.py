@@ -251,3 +251,42 @@ def get_dashboard(db: Session = Depends(get_db)):
         "done":        sum(1 for t in tasks if t.status == "done"),
         "overdue":     sum(1 for t in tasks if t.due_date and t.due_date < now and t.status != "done"),
     }
+
+# ── Team Messages ───────────────────────────────────────────────
+
+@app.get("/api/team/messages")
+def get_messages(db: Session = Depends(get_db)):
+    messages = db.query(models.TeamMessage).order_by(models.TeamMessage.timestamp.asc()).all()
+    result = []
+    for msg in messages:
+        result.append({
+            "id":        msg.id,
+            "text":      msg.text,
+            "timestamp": msg.timestamp,
+            "user_id":   msg.user_id,
+            "user_name": msg.user.name if msg.user else "Unknown",
+        })
+    return result
+
+@app.post("/api/team/messages")
+def send_message(payload: schemas.MessageCreate, db: Session = Depends(get_db)):
+    # Validate user exists
+    user = db.query(models.User).filter(models.User.id == payload.user_id).first()
+    if not user:
+        raise HTTPException(status_code=400, detail=f"User {payload.user_id} does not exist")
+    msg = models.TeamMessage(
+        text=payload.text,
+        user_id=payload.user_id,
+        timestamp=datetime.now(),
+    )
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    # Return with user_name included
+    return {
+        "id":        msg.id,
+        "text":      msg.text,
+        "timestamp": msg.timestamp,
+        "user_id":   msg.user_id,
+        "user_name": user.name or user.email.split("@")[0],
+    }
