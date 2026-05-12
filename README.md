@@ -6,7 +6,7 @@ and FastAPI on the backend, deployed on Railway with PostgreSQL.
 
 LIVE DEMO
 
-Frontend : https://frontend-production-28aba.up.railway.app
+Frontend : https://taskflow-production-441.up.railway.app
 Backend  : https://backend-production-f073.up.railway.app/docs
 
 
