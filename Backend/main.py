@@ -289,3 +289,48 @@ def send_message(payload: schemas.MessageCreate, db: Session = Depends(get_db)):
         "user_id":   msg.user_id,
         "user_name": user.name or user.email.split("@")[0],
     }
+
+# ── Project Comments ─────────────────────────────────────────────
+
+@app.get("/api/projects/{project_id}/comments")
+def get_project_comments(project_id: int, db: Session = Depends(get_db)):
+    comments = db.query(models.ProjectComment).filter(
+        models.ProjectComment.project_id == project_id
+    ).order_by(models.ProjectComment.timestamp.asc()).all()
+    result = []
+    for c in comments:
+        result.append({
+            "id":         c.id,
+            "text":       c.text,
+            "timestamp":  c.timestamp,
+            "project_id": c.project_id,
+            "user_id":    c.user_id,
+            "user_name":  c.user.name if c.user else "Unknown",
+        })
+    return result
+
+@app.post("/api/projects/{project_id}/comments")
+def add_project_comment(project_id: int, payload: schemas.CommentCreate, db: Session = Depends(get_db)):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    user = db.query(models.User).filter(models.User.id == payload.user_id).first()
+    if not user:
+        raise HTTPException(status_code=400, detail=f"User {payload.user_id} does not exist")
+    comment = models.ProjectComment(
+        text=payload.text,
+        project_id=project_id,
+        user_id=payload.user_id,
+        timestamp=datetime.now(),
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return {
+        "id":         comment.id,
+        "text":       comment.text,
+        "timestamp":  comment.timestamp,
+        "project_id": comment.project_id,
+        "user_id":    comment.user_id,
+        "user_name":  user.name or user.email.split("@")[0],
+    }
