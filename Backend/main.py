@@ -4,39 +4,140 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 import models, schemas, auth
 from database import engine, get_db
-import os
-import uvicorn
-
-
-# Import worker safely — app still works if Celery not running
-try:
-    from worker import process_ai_task_breakdown
-    CELERY_AVAILABLE = True
-except Exception:
-    CELERY_AVAILABLE = False
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Team Task Manager")
 
-origins = [
-    "https://frontend-production-28aba.up.railway.app",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── AI Analysis (inline, no Celery needed) ─────────────────────
+def generate_ai_insights(title: str, description: str) -> str:
+    """
+    Generate smart task breakdown based on title and description keywords.
+    No external API needed — runs instantly on task creation.
+    """
+    title_lower = title.lower()
+    desc_lower  = description.lower()
+    combined    = title_lower + " " + desc_lower
+
+    # Detect task type from keywords
+    if any(k in combined for k in ["api", "endpoint", "rest", "fastapi", "backend"]):
+        steps = [
+            "1. Define request/response schemas",
+            "2. Implement endpoint logic with validation",
+            "3. Add error handling and status codes",
+            "4. Write unit tests for the endpoint",
+            "5. Test with Postman or Swagger UI",
+        ]
+        priority = "HIGH" if any(k in combined for k in ["auth", "login", "security"]) else "MEDIUM"
+
+    elif any(k in combined for k in ["ui", "frontend", "react", "component", "page", "design"]):
+        steps = [
+            "1. Create component structure and props",
+            "2. Implement UI layout and styling",
+            "3. Add state management and event handlers",
+            "4. Connect to backend API",
+            "5. Test responsiveness across screen sizes",
+        ]
+        priority = "MEDIUM"
+
+    elif any(k in combined for k in ["database", "db", "schema", "migration", "model", "table"]):
+        steps = [
+            "1. Design database schema and relationships",
+            "2. Create migration scripts",
+            "3. Add indexes for performance",
+            "4. Validate constraints and foreign keys",
+            "5. Test with sample data",
+        ]
+        priority = "HIGH"
+
+    elif any(k in combined for k in ["test", "testing", "unit", "integration", "qa"]):
+        steps = [
+            "1. Identify test cases and edge cases",
+            "2. Write unit tests for core logic",
+            "3. Add integration tests",
+            "4. Set up test data and mocks",
+            "5. Ensure 80%+ code coverage",
+        ]
+        priority = "MEDIUM"
+
+    elif any(k in combined for k in ["deploy", "railway", "docker", "ci", "cd", "pipeline"]):
+        steps = [
+            "1. Prepare environment variables and configs",
+            "2. Dockerize the application",
+            "3. Set up CI/CD pipeline",
+            "4. Configure health checks",
+            "5. Monitor logs after deployment",
+        ]
+        priority = "HIGH"
+
+    elif any(k in combined for k in ["bug", "fix", "error", "crash", "issue", "broken"]):
+        steps = [
+            "1. Reproduce the bug consistently",
+            "2. Identify root cause from logs",
+            "3. Implement fix with minimal side effects",
+            "4. Add regression test",
+            "5. Verify fix in staging environment",
+        ]
+        priority = "HIGH"
+
+    elif any(k in combined for k in ["auth", "login", "register", "password", "jwt", "token"]):
+        steps = [
+            "1. Implement authentication flow",
+            "2. Secure password hashing",
+            "3. Generate and validate JWT tokens",
+            "4. Add session management",
+            "5. Test security edge cases",
+        ]
+        priority = "HIGH"
+
+    elif any(k in combined for k in ["report", "dashboard", "analytics", "chart", "stats"]):
+        steps = [
+            "1. Define metrics and KPIs to display",
+            "2. Write optimized DB queries",
+            "3. Build chart/visualization components",
+            "4. Add date range filters",
+            "5. Test with real data",
+        ]
+        priority = "MEDIUM"
+
+    else:
+        # Generic breakdown for any other task
+        words = description.split()[:6]
+        steps = [
+            f"1. Analyze requirements: {' '.join(words[:3])}...",
+            "2. Break down into subtasks",
+            "3. Implement core functionality",
+            "4. Test and validate output",
+            "5. Review and document changes",
+        ]
+        priority = "MEDIUM"
+
+    # Estimate effort based on description length
+    if len(description) > 100:
+        effort = "3-5 days"
+    elif len(description) > 50:
+        effort = "1-2 days"
+    else:
+        effort = "2-4 hours"
+
+    return (
+        f"Priority: {priority} | Estimated Effort: {effort}\n\n"
+        + "\n".join(steps)
+    )
+
 
 # ── Users ──────────────────────────────────────────────────────
 
 @app.post("/api/users/register", response_model=schemas.UserOut)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    if not user.email.lower().endswith("@taskflow.com"):
-        raise HTTPException(status_code=400, detail="Only @taskflow.com emails are allowed.")
     existing = db.query(models.User).filter(models.User.email == user.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -44,16 +145,12 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
         email=user.email,
         hashed_password=auth.get_password_hash(user.password),
         role=user.role,
-        name=user.name or user.email.split("@")[0],  # use provided name or fallback
+        name=user.name or user.email.split("@")[0],
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
-
-@app.get("/")
-def root():
-    return {"message": "API working"}
 
 @app.post("/api/users/login", response_model=schemas.UserOut)
 def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
@@ -95,24 +192,22 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
         if not assignee:
             raise HTTPException(status_code=400, detail=f"User {task.assignee_id} does not exist")
 
+    # Generate AI insights inline — no Celery needed
+    ai_insights = None
+    if task.description and len(task.description) > 10:
+        ai_insights = generate_ai_insights(task.title, task.description)
+
     db_task = models.Task(
         title=task.title,
         description=task.description,
         project_id=task.project_id,
         assignee_id=task.assignee_id,
         due_date=task.due_date,
+        ai_insights=ai_insights,
     )
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
-
-    # Trigger AI analysis if description is long enough
-    if CELERY_AVAILABLE and task.description and len(task.description) > 10:
-        try:
-            process_ai_task_breakdown.delay(db_task.id, task.description)
-        except Exception:
-            pass  # Don't crash if Celery/RabbitMQ not running
-
     return db_task
 
 @app.get("/api/tasks", response_model=list[schemas.TaskOut])
@@ -156,30 +251,3 @@ def get_dashboard(db: Session = Depends(get_db)):
         "done":        sum(1 for t in tasks if t.status == "done"),
         "overdue":     sum(1 for t in tasks if t.due_date and t.due_date < now and t.status != "done"),
     }
-
-
-# ── Chat & Comments ─────────────────────────────────────────────
-
-@app.get("/api/projects/{project_id}/comments", response_model=list[schemas.CommentOut])
-def get_project_comments(project_id: int, db: Session = Depends(get_db)):
-    return db.query(models.ProjectComment).filter(models.ProjectComment.project_id == project_id).order_by(models.ProjectComment.timestamp.asc()).all()
-
-@app.post("/api/projects/{project_id}/comments", response_model=schemas.CommentOut)
-def create_project_comment(project_id: int, comment: schemas.CommentCreate, db: Session = Depends(get_db)):
-    db_comment = models.ProjectComment(text=comment.text, project_id=project_id, user_id=comment.user_id)
-    db.add(db_comment)
-    db.commit()
-    db.refresh(db_comment)
-    return db_comment
-
-@app.get("/api/team/messages", response_model=list[schemas.MessageOut])
-def get_team_messages(db: Session = Depends(get_db)):
-    return db.query(models.TeamMessage).order_by(models.TeamMessage.timestamp.asc()).all()
-
-@app.post("/api/team/messages", response_model=schemas.MessageOut)
-def create_team_message(message: schemas.MessageCreate, db: Session = Depends(get_db)):
-    db_message = models.TeamMessage(text=message.text, user_id=message.user_id)
-    db.add(db_message)
-    db.commit()
-    db.refresh(db_message)
-    return db_message
