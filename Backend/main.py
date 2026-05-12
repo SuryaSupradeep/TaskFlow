@@ -19,10 +19,14 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Team Task Manager")
 
+origins = [
+    "https://frontend-production-28aba.up.railway.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
